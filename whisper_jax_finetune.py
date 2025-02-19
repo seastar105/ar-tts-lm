@@ -483,6 +483,7 @@ train_loader = DataLoader(
     drop_last=True,
     collate_fn=data_collator,
     num_workers=8,
+    prefetch_factor=8
 )
 
 # train
