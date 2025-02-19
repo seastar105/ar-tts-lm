@@ -1,3 +1,6 @@
+import torch.multiprocessing as mp
+mp.set_start_method("spawn", force=True)
+
 import logging
 import os
 import sys
