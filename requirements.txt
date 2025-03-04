@@ -1,5 +1,6 @@
 torch
 torchaudio
+torchvision
 transformers
 datasets[audio]
 descript-audiotools
@@ -7,3 +8,6 @@ tensorboard
 ray
 einops
 pre-commit
+jiwer
+whisper-normalizer
+webdataset
