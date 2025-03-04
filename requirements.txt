@@ -1,0 +1,9 @@
+torch
+torchaudio
+transformers
+datasets[audio]
+descript-audiotools
+tensorboard
+ray
+einops
+pre-commit
