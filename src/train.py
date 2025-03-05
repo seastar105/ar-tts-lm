@@ -3,6 +3,7 @@ import sys
 import rootutils
 import torch
 from datasets import load_dataset
+from huggingface_hub import HfApi, get_token
 from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
@@ -25,22 +26,23 @@ def main():
     model.train()
 
     # manage vocab expansion
-    model.resize_token_embeddings(len(tokenizer))
+    model.resize_token_embeddings(len(dataset.tokenizer))
+    dataset.tokenizer.save_pretrained("./output")
 
-    total_batch_size = 32
-    micro_batch_size = 8
-    gradient_accumulation = total_batch_size // micro_batch_size
+    per_device_batch_size = 32
+    per_device_micro_batch_size = 8
+    gradient_accumulation = per_device_batch_size // per_device_micro_batch_size
 
     dataloader_num_workers = 4
-    max_steps = 5000
+    max_steps = 20000
     warmup_steps = 200
-    learning_rate = 1e-5
+    learning_rate = 1e-4
 
     adamw_beta1 = 0.9
     adamw_beta2 = 0.999
     decay = 0.01
 
-    max_length = 2048
+    max_length = 4096
     packed_dataset = SequencePackWrapper(dataset, max_length=max_length)
 
     trainer = Trainer(
@@ -50,7 +52,7 @@ def main():
             do_train=True,
             do_eval=False,
             do_predict=False,
-            per_device_train_batch_size=micro_batch_size,
+            per_device_train_batch_size=per_device_micro_batch_size,
             gradient_accumulation_steps=gradient_accumulation,
             learning_rate=learning_rate,
             weight_decay=decay,

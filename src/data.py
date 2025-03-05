@@ -17,6 +17,17 @@ logging.basicConfig(
 logger.setLevel(logging.DEBUG)
 
 
+UNICODE_OFFSET: int = 0x4E00
+
+
+def int_to_char(i):
+    return chr(i + UNICODE_OFFSET)
+
+
+def char_to_int(c):
+    return ord(c) - UNICODE_OFFSET
+
+
 class TextCodeDataset(torch.utils.data.Dataset):
     def __init__(
         self,
@@ -53,7 +64,7 @@ class TextCodeDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         item = self.dataset[idx]
-        text = item[self.text_column_name]
+        text = item[self.text_column_name].strip()
         codes = item[self.code_column_name]
 
         text_tokens = self.tokenizer(text).input_ids
