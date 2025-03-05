@@ -11,3 +11,5 @@ pre-commit
 jiwer
 whisper-normalizer
 webdataset
+rootutils
+accelerate
