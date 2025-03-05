@@ -74,6 +74,9 @@ if __name__ == "__main__":
         ):
             local_paths.append(local_path)
 
+    # Download checkpoint before parallel execution
+    load_large_v2()
+
     dataset = (
         ray.data.read_webdataset(local_paths)
         .map(AudioDecoder, concurrency=args.gpu_concurrency * 4)
