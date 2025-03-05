@@ -3,3 +3,4 @@ cache
 .cache
 assets/*.ckpt
 temp.*
+logs
