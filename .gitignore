@@ -2,5 +2,7 @@ __pycache__
 cache
 .cache
 assets/*.ckpt
+assets/tokenizers
 temp.*
 logs
+output

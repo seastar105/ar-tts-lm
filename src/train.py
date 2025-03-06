@@ -26,17 +26,20 @@ def main():
     model.train()
 
     # manage vocab expansion
-    model.resize_token_embeddings(len(dataset.tokenizer))
-    dataset.tokenizer.save_pretrained("./output")
+    mean_resizing = False  # I think mean resizing does not make sense here
+    model.resize_token_embeddings(len(dataset.tokenizer), mean_resizing=mean_resizing)
 
-    per_device_batch_size = 32
-    per_device_micro_batch_size = 8
+    output_dir = "./output/pack_rand"
+    dataset.tokenizer.save_pretrained(output_dir)
+
+    per_device_batch_size = 16
+    per_device_micro_batch_size = 4
     gradient_accumulation = per_device_batch_size // per_device_micro_batch_size
 
     dataloader_num_workers = 4
     max_steps = 20000
     warmup_steps = 200
-    learning_rate = 1e-4
+    learning_rate = 2e-4
 
     adamw_beta1 = 0.9
     adamw_beta2 = 0.999
@@ -62,17 +65,18 @@ def main():
             max_steps=max_steps,
             warmup_steps=warmup_steps,
             logging_steps=20,
-            logging_dir="./logs",
+            logging_dir="./logs/pack_rand",
             dataloader_num_workers=dataloader_num_workers,
             bf16=True,
             gradient_checkpointing=True,
             lr_scheduler_type="cosine",
+            save_strategy="no",
         ),
     )
     if torch.__version__ >= "2" and sys.platform != "win32":
         model = torch.compile(model)
     trainer.train()
-    model.save_pretrained("./output")
+    model.save_pretrained(output_dir)
 
 
 if __name__ == "__main__":
