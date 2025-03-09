@@ -22,7 +22,7 @@ torch.backends.cudnn.allow_tf32 = True
 
 class AudioDecoder:
     def __call__(self, item):
-        audio_bytes = item["mp3"]
+        audio_bytes = item["wav"]
         audio, sr = librosa.load(io.BytesIO(audio_bytes), sr=None)
         if sr != 24000:
             audio = librosa.resample(audio, orig_sr=sr, target_sr=24000)
@@ -53,33 +53,23 @@ if __name__ == "__main__":
 
     parser.add_argument("--num_gpus", type=float, default=1)
     parser.add_argument("--gpu_concurrency", type=int, default=1)
-    parser.add_argument("--cache_dir", type=str, default="./cache")
     parser.add_argument("--output_dir", type=str, required=True)
 
     args = parser.parse_args()
 
     fs = HfFileSystem()
-    tar_files = sorted(fs.glob("datasets/seastar105/Emilia-YODAS-KO-filtered/**/*.tar"))
-    tar_files = [fs.resolve_path(f) for f in tar_files]
-    local_paths = []
-
-    def download_file(tar_file):
-        return hf_hub_download(
-            repo_id=tar_file.repo_id, filename=tar_file.path_in_repo, local_dir=args.cache_dir, repo_type="dataset"
-        )
-
-    with ThreadPoolExecutor(max_workers=8) as executor:
-        for local_path in tqdm(
-            executor.map(download_file, tar_files), desc=f"Downloading taf files to {args.cache_dir}"
-        ):
-            local_paths.append(local_path)
+    tar_files = sorted(fs.glob("datasets/seastar105/aihub-542-webdataset/**/*.tar"))
 
     # Download checkpoint before parallel execution
     load_large_v2()
 
-    dataset = (
-        ray.data.read_webdataset(local_paths)
-        .map(AudioDecoder, concurrency=args.gpu_concurrency * 4)
-        .map(WavTokActor, num_gpus=args.num_gpus, concurrency=args.gpu_concurrency)
-    )
-    dataset.write_json(args.output_dir, force_ascii=False, min_rows_per_file=10000)
+    num_shards_per_job = 100
+
+    for i in range(0, len(tar_files), num_shards_per_job):
+        shards = tar_files[i : i + num_shards_per_job]
+        dataset = (
+            ray.data.read_webdataset(shards, filesystem=fs)
+            .map(AudioDecoder, concurrency=args.gpu_concurrency * 4)
+            .map(WavTokActor, num_gpus=args.num_gpus, concurrency=args.gpu_concurrency)
+        )
+        dataset.write_json(args.output_dir, force_ascii=False, min_rows_per_file=100000)
