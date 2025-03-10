@@ -76,7 +76,7 @@ if __name__ == "__main__":
         shard_idx = i // num_shards_per_job
         output_dir = f"{args.output_dir}/shard_{shard_idx:03d}"
         # check if already output exists on remote repo
-        if len(fs.glob(f"datasets/seastar105/aihub-542-tokenized/{output_dir}/*.json")) > 0:
+        if len(fs.glob(f"datasets/seastar105/aihub-542-tokenized/shard_{shard_idx:03d}/*.json")) > 0:
             print(f"Skipping {output_dir} as it already exists")
             continue
 
