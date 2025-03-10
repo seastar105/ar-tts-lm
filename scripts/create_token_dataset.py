@@ -83,7 +83,7 @@ if __name__ == "__main__":
         shards = tar_files[i : i + num_shards_per_job]
         shards = [fs.resolve_path(shard) for shard in shards]
         local_paths = []
-        with ThreadPoolExecutor(max_workers=min(8, num_shards_per_job)) as executor:
+        with ThreadPoolExecutor(max_workers=min(16, num_shards_per_job)) as executor:
             for local_path in tqdm(executor.map(download_file, shards), desc="Downloading tar files..."):
                 local_paths.append(local_path)
         dataset = (
