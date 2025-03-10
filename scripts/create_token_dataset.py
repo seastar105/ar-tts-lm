@@ -89,6 +89,7 @@ if __name__ == "__main__":
         dataset = (
             ray.data.read_webdataset(local_paths)
             .map(AudioDecoder, concurrency=(args.gpu_concurrency * 1, args.gpu_concurrency * 4))
+            .filter(lambda x: x["audio"].shape[-1] >= 8000)  # Filter out short audio
             .map(WavTokActor, num_gpus=args.num_gpus, concurrency=args.gpu_concurrency)
         )
 
