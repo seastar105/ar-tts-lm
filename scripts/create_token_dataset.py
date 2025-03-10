@@ -88,13 +88,14 @@ if __name__ == "__main__":
                 local_paths.append(local_path)
         dataset = (
             ray.data.read_webdataset(local_paths)
-            .map(AudioDecoder, concurrency=args.gpu_concurrency * 4)
+            .map(AudioDecoder, concurrency=(args.gpu_concurrency * 1, args.gpu_concurrency * 4))
             .map(WavTokActor, num_gpus=args.num_gpus, concurrency=args.gpu_concurrency)
         )
 
         dataset.write_json(output_dir, force_ascii=False, min_rows_per_file=50000)
         api.upload_folder(
             repo_id="seastar105/aihub-542-tokenized",
+            folder_path=output_dir,
             path_in_repo=f"shard_{shard_idx:03d}",
             repo_type="dataset",
         )
