@@ -87,7 +87,7 @@ if __name__ == "__main__":
             for local_path in tqdm(executor.map(download_file, shards), desc="Downloading tar files..."):
                 local_paths.append(local_path)
         dataset = (
-            ray.data.read_webdataset(shards, filesystem=fs)
+            ray.data.read_webdataset(local_paths)
             .map(AudioDecoder, concurrency=args.gpu_concurrency * 4)
             .map(WavTokActor, num_gpus=args.num_gpus, concurrency=args.gpu_concurrency)
         )
