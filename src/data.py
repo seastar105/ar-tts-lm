@@ -39,6 +39,7 @@ class TextCodeDataset(torch.utils.data.Dataset):
         code_vocab_size: int = 4096,
         boa_token: str = "<|beginofaudio|>",
         eoa_token: str = "<|endofaudio|>",
+        use_chat_template: bool = False,
     ):
         self.dataset = dataset
         self.tokenizer = tokenizer
@@ -58,6 +59,10 @@ class TextCodeDataset(torch.utils.data.Dataset):
 
         self.boa_token_id = self.tokenizer.convert_tokens_to_ids(boa_token)
         self.eoa_token_id = self.tokenizer.convert_tokens_to_ids(eoa_token)
+        self.use_chat_template = use_chat_template
+
+        if self.use_chat_template:
+            assert self.tokenizer.chat_template is not None, "Chat template is not provided in tokenizer"
 
     def __len__(self):
         return len(self.dataset)
@@ -66,14 +71,26 @@ class TextCodeDataset(torch.utils.data.Dataset):
         item = self.dataset[idx]
         text = item[self.text_column_name].strip()
         codes = item[self.code_column_name]
-
-        text_tokens = self.tokenizer(text).input_ids
         code_str = self.boa_token + "".join([self.code_template.format(idx=code) for code in codes]) + self.eoa_token
-        code_tokens = self.tokenizer(code_str).input_ids
 
-        tokens = torch.LongTensor(text_tokens + code_tokens)
-        labels = tokens.clone()
-        labels[tokens <= self.boa_token_id] = -100
+        if self.use_chat_template:
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": f"Convert the following text to audible speech.\n{text}"},
+                {"role": "assistant", "content": code_str},
+            ]
+            chat_str = self.tokenizer.apply_chat_template(messages, tokenize=False).strip()
+            tokens = torch.LongTensor(self.tokenizer(chat_str).input_ids)
+            labels = tokens.clone()
+            labels[labels < self.boa_token_id] = -100  # on sft format, boa_token should be also predicted
+            labels[-1] = tokens[-1]  # eos should be predicted
+        else:
+            text_tokens = self.tokenizer(text).input_ids
+            code_tokens = self.tokenizer(code_str).input_ids
+
+            tokens = torch.LongTensor(text_tokens + code_tokens)
+            labels = tokens.clone()
+            labels[tokens <= self.boa_token_id] = -100
         position_ids = torch.arange(len(tokens))
         return {
             "input_ids": tokens.squeeze(),

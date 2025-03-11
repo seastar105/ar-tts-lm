@@ -12,13 +12,13 @@ from src.data import SequencePackWrapper, TextCodeDataset
 
 
 def main():
-    model_name = "Qwen/Qwen2.5-0.5B"
+    model_name = "Qwen/Qwen2.5-0.5B-Instruct"
     dataset_name = "seastar105/aihub-542-tokenized"
     dataset_split = "train"
 
     dataset = load_dataset(dataset_name, split=dataset_split, num_proc=16)
     tokenizer = AutoTokenizer.from_pretrained(model_name)
-    dataset = TextCodeDataset(dataset, tokenizer)
+    dataset = TextCodeDataset(dataset, tokenizer, use_chat_template=True)
 
     model = AutoModelForCausalLM.from_pretrained(
         model_name, torch_dtype=torch.bfloat16, attn_implementation="flash_attention_2"
@@ -29,17 +29,17 @@ def main():
     mean_resizing = False  # I think mean resizing does not make sense here
     model.resize_token_embeddings(len(dataset.tokenizer), mean_resizing=mean_resizing)
 
-    output_dir = "./output/pack_aihub_1M"
+    output_dir = "./output/pack_inst_aihub"
     dataset.tokenizer.save_pretrained(output_dir)
 
-    per_device_batch_size = 256
+    per_device_batch_size = 4
     per_device_micro_batch_size = 1
     gradient_accumulation = per_device_batch_size // per_device_micro_batch_size
 
     dataloader_num_workers = 4
     max_steps = 5000
     warmup_steps = 200
-    learning_rate = 1e-3
+    learning_rate = 2e-4
 
     adamw_beta1 = 0.9
     adamw_beta2 = 0.999
@@ -65,7 +65,7 @@ def main():
             max_steps=max_steps,
             warmup_steps=warmup_steps,
             logging_steps=20,
-            logging_dir="./logs/pack_aihub_1M",
+            logging_dir="./logs/pack_inst_aihub",
             dataloader_num_workers=dataloader_num_workers,
             bf16=True,
             gradient_checkpointing=True,
