@@ -67,6 +67,31 @@ class TextCodeDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.dataset)
 
+    def tokenize(self, text: str, codes: list[int]):
+        code_str = self.boa_token + "".join([self.code_template.format(idx=code) for code in codes]) + self.eoa_token
+        if self.use_chat_template:
+            messages = [
+                {"role": "system", "content": "You are a helpful assistant."},
+                {"role": "user", "content": f"Convert the following text to audible speech.\n{text}"},
+                {"role": "assistant", "content": code_str},
+            ]
+            chat_str = self.tokenizer.apply_chat_template(messages, tokenize=False).strip()
+            tokens = torch.LongTensor(self.tokenizer(chat_str).input_ids)
+            labels = tokens.clone()
+            labels[labels < self.boa_token_id] = -100  # on sft format, boa_token should be also predicted
+            labels[-1] = tokens[-1]  # eos should be predicted
+        else:
+            text_tokens = self.tokenizer(text).input_ids
+            code_tokens = self.tokenizer(code_str).input_ids
+
+            tokens = torch.LongTensor(text_tokens + code_tokens)
+            labels = tokens.clone()
+            labels[tokens <= self.boa_token_id] = -100
+        return {
+            "input_ids": tokens.squeeze(),
+            "labels": labels.squeeze(),
+        }
+
     def __getitem__(self, idx):
         item = self.dataset[idx]
         text = item[self.text_column_name].strip()
@@ -100,7 +125,7 @@ class TextCodeDataset(torch.utils.data.Dataset):
 
 
 class SequencePackWrapper(torch.utils.data.IterableDataset):
-    def __init__(self, dataset: TextCodeDataset, max_length: int = 2048, buf_size: int = 100):
+    def __init__(self, dataset: TextCodeDataset, max_length: int = 2048, buf_size: int = 100, rank=None):
         self.dataset = dataset
         self.max_length = max_length
         self.buf_size = buf_size
@@ -108,6 +133,7 @@ class SequencePackWrapper(torch.utils.data.IterableDataset):
         self.buffer = []
         self.generator = None
         self.pad_token_id = self.dataset.tokenizer.pad_token_id
+        self.rank = rank
 
     def pytorch_worker_info(group=None):  # sourcery skip: use-contextlib-suppress
         """Return node and worker info for PyTorch and some distributed environments.
@@ -188,6 +214,8 @@ class SequencePackWrapper(torch.utils.data.IterableDataset):
     def __iter__(self):
         if self.generator is None:
             rank, world_size, worker, num_workers = self.pytorch_worker_info()
+            if self.rank is not None:
+                rank = self.rank
             seed = rank * num_workers + worker
             logger.debug(
                 f"Rank: {rank}, World Size: {world_size}, Worker: {worker}, Num Workers: {num_workers}, Seed: {seed}"

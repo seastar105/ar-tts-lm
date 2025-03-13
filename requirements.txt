@@ -13,3 +13,8 @@ whisper-normalizer
 webdataset
 rootutils
 accelerate
+
+litgpt[all]
+--extra-index-url https://storage.googleapis.com/libtpu-releases/index.html
+--extra-index-url https://storage.googleapis.com/libtpu-wheels/index.html
+torch_xla[tpu]~=2.6.0

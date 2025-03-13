@@ -37,9 +37,9 @@ def main():
     gradient_accumulation = per_device_batch_size // per_device_micro_batch_size
 
     dataloader_num_workers = 4
-    max_steps = 5000
+    max_steps = 10000
     warmup_steps = 200
-    learning_rate = 1e-3
+    learning_rate = 2e-4
 
     adamw_beta1 = 0.9
     adamw_beta2 = 0.999
